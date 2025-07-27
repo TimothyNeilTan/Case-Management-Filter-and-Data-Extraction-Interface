@@ -1,23 +1,55 @@
 import React, { useState } from 'react';
 import { ChevronDownIcon, PlusIcon, SearchIcon } from 'lucide-react';
 import { sampleCases } from '../data/sampleData';
-const CaseManagement = ({
-  onCaseClick
+import Breadcrumb from './Breadcrumb';
+import { CaseItem } from '../types';
+
+interface Filters {
+  status: string;
+  alerts: string[];
+  caseAge: {
+    moreThan: number | '';
+    lessThan: number | '';
+  };
+}
+
+interface CaseManagementProps {
+  onCaseClick: (caseItem: CaseItem) => void;
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+  showCaseAgeFilter: boolean;
+  setShowCaseAgeFilter: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const CaseManagement: React.FC<CaseManagementProps> = ({
+  onCaseClick,
+  filters,
+  setFilters,
+  showCaseAgeFilter,
+  setShowCaseAgeFilter
 }) => {
   const [activeTab, setActiveTab] = useState('allCases');
-  const [filters, setFilters] = useState({
-    status: '',
-    alerts: [],
-    caseAge: ''
-  });
   const [showAlertsDropdown, setShowAlertsDropdown] = useState(false);
-  const handleFilterChange = (filterType, value) => {
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showCaseAgeDropdown, setShowCaseAgeDropdown] = useState(false);
+  const [showPlusDropdown, setShowPlusDropdown] = useState(false);
+
+  const handleFilterChange = (filterType: keyof Filters, value: string | string[] | {moreThan: number | '', lessThan: number | ''}) => {
     setFilters({
       ...filters,
       [filterType]: value
     });
   };
-  const handleAlertToggle = alertType => {
+
+  const handleCaseAgeChange = (type: 'moreThan' | 'lessThan', value: string) => {
+    const numValue = value === '' ? '' : parseInt(value);
+    handleFilterChange('caseAge', {
+      ...filters.caseAge,
+      [type]: numValue
+    });
+  };
+
+  const handleAlertToggle = (alertType: string) => {
     const updatedAlerts = [...filters.alerts];
     const alertIndex = updatedAlerts.indexOf(alertType);
     if (alertIndex >= 0) {
@@ -28,9 +60,32 @@ const CaseManagement = ({
     handleFilterChange('alerts', updatedAlerts);
     setShowAlertsDropdown(false);
   };
+
+  const handlePlusClick = () => {
+    setShowPlusDropdown(!showPlusDropdown);
+    setShowStatusDropdown(false);
+    setShowAlertsDropdown(false);
+    setShowCaseAgeDropdown(false);
+  };
+
+  const handleCaseAgeSelect = () => {
+    setShowCaseAgeFilter(true);
+    setShowPlusDropdown(false);
+  };
+
   const filteredCases = sampleCases.filter(caseItem => {
     if (filters.status && caseItem.status !== filters.status) return false;
-    if (filters.caseAge === 'more than two days' && caseItem.ageInDays <= 2) return false;
+    
+    // Case age filtering - with debug logging
+    if (filters.caseAge.moreThan !== '') {
+      console.log(`Checking ${caseItem.entity}: ageInDays=${caseItem.ageInDays}, moreThan=${filters.caseAge.moreThan}, condition: ${caseItem.ageInDays} <= ${filters.caseAge.moreThan} = ${caseItem.ageInDays <= filters.caseAge.moreThan}`);
+      if (caseItem.ageInDays <= filters.caseAge.moreThan) return false;
+    }
+    if (filters.caseAge.lessThan !== '') {
+      console.log(`Checking ${caseItem.entity}: ageInDays=${caseItem.ageInDays}, lessThan=${filters.caseAge.lessThan}, condition: ${caseItem.ageInDays} >= ${filters.caseAge.lessThan} = ${caseItem.ageInDays >= filters.caseAge.lessThan}`);
+      if (caseItem.ageInDays >= filters.caseAge.lessThan) return false;
+    }
+    
     if (filters.alerts.length > 0) {
       const hasMatchingAlert = filters.alerts.some(alertType => caseItem.alerts.includes(alertType));
       if (!hasMatchingAlert) return false;
@@ -38,6 +93,12 @@ const CaseManagement = ({
     return true;
   });
   return <div className="p-6 w-full">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb items={[
+        { label: 'Alloy' },
+        { label: 'Cases', isActive: true }
+      ]} />
+      
       <h1 className="text-2xl font-bold mb-4">Case Management</h1>
       {/* Search bar */}
       <div className="flex mb-6">
@@ -53,32 +114,62 @@ const CaseManagement = ({
       <div className="mb-4">
         <div className="text-sm text-gray-600 mb-2">Filter by</div>
         <div className="flex flex-wrap gap-2">
+          {/* Status Filter */}
           <div className="relative">
-            <button className="flex items-center border border-gray-300 rounded px-3 py-1.5 text-sm bg-white" onClick={() => handleFilterChange('status', 'Needs Review')}>
+            <button 
+              className="flex items-center border border-gray-300 rounded px-3 py-1.5 text-sm bg-white" 
+              onClick={() => {
+                setShowStatusDropdown(!showStatusDropdown);
+                setShowAlertsDropdown(false);
+                setShowCaseAgeDropdown(false);
+                setShowPlusDropdown(false);
+              }}
+            >
               Status
               <ChevronDownIcon size={16} className="ml-1" />
             </button>
-            {filters.status && <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 z-10">
-                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleFilterChange('status', '')}>
+            {showStatusDropdown && <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 z-10">
+                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => {
+                  handleFilterChange('status', '');
+                  setShowStatusDropdown(false);
+                }}>
                   Clear
                 </div>
-                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleFilterChange('status', 'Needs Review')}>
+                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => {
+                  handleFilterChange('status', 'Needs Review');
+                  setShowStatusDropdown(false);
+                }}>
                   Needs Review
                 </div>
-                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleFilterChange('status', 'Ops')}>
+                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => {
+                  handleFilterChange('status', 'Ops');
+                  setShowStatusDropdown(false);
+                }}>
                   Ops
                 </div>
-                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleFilterChange('status', 'Watchlist')}>
+                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => {
+                  handleFilterChange('status', 'Watchlist');
+                  setShowStatusDropdown(false);
+                }}>
                   Watchlist
                 </div>
               </div>}
           </div>
+
+          {/* Alerts Filter */}
           <div className="relative">
-            <button className="flex items-center justify-between border border-gray-300 rounded px-3 py-1.5 text-sm bg-white" onClick={() => setShowAlertsDropdown(!showAlertsDropdown)} style={{
-            minWidth: '80px'
-          }}>
+            <button 
+              className="flex items-center justify-between border border-gray-300 rounded px-3 py-1.5 text-sm bg-white" 
+              onClick={() => {
+                setShowAlertsDropdown(!showAlertsDropdown);
+                setShowStatusDropdown(false);
+                setShowCaseAgeDropdown(false);
+                setShowPlusDropdown(false);
+              }} 
+              style={{minWidth: '80px'}}
+            >
               <span>Alerts</span>
-              <PlusIcon size={16} className="ml-6" />
+              <ChevronDownIcon size={16} className="ml-1" />
             </button>
             {showAlertsDropdown && <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 z-10 w-48">
                 <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => {
@@ -109,20 +200,88 @@ const CaseManagement = ({
                 </div>
               </div>}
           </div>
+
+          {/* Plus Button */}
           <div className="relative">
-            <button className="flex items-center border border-gray-300 rounded px-3 py-1.5 text-sm bg-white" onClick={() => handleFilterChange('caseAge', 'more than two days')}>
-              Case Age
-              <ChevronDownIcon size={16} className="ml-1" />
+            <button 
+              className="flex items-center border border-gray-300 rounded px-3 py-1.5 text-sm bg-white hover:bg-gray-50" 
+              onClick={handlePlusClick}
+            >
+              <PlusIcon size={16} />
             </button>
-            {filters.caseAge && <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 z-10">
-                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleFilterChange('caseAge', '')}>
-                  Clear
+            {showPlusDropdown && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 z-10 w-32">
+                <div 
+                  className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" 
+                  onClick={handleCaseAgeSelect}
+                >
+                  Case Age
                 </div>
-                <div className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleFilterChange('caseAge', 'more than two days')}>
-                  more than two days
-                </div>
-              </div>}
+              </div>
+            )}
           </div>
+
+          {/* Case Age Filter - only show when activated */}
+          {showCaseAgeFilter && (
+            <div className="relative">
+              <button 
+                className="flex items-center border border-gray-300 rounded px-3 py-1.5 text-sm bg-white" 
+                onClick={() => {
+                  setShowCaseAgeDropdown(!showCaseAgeDropdown);
+                  setShowStatusDropdown(false);
+                  setShowAlertsDropdown(false);
+                  setShowPlusDropdown(false);
+                }}
+              >
+                Case Age
+                <ChevronDownIcon size={16} className="ml-1" />
+              </button>
+              {showCaseAgeDropdown && <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-3 z-10 w-64">
+                  <div className="mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">More than (days)</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={filters.caseAge.moreThan} 
+                      onChange={(e) => handleCaseAgeChange('moreThan', e.target.value)} 
+                      placeholder="Enter number" 
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Less than (days)</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={filters.caseAge.lessThan} 
+                      onChange={(e) => handleCaseAgeChange('lessThan', e.target.value)} 
+                      placeholder="Enter number" 
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-gray-200">
+                    <button 
+                      className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                      onClick={() => {
+                        handleFilterChange('caseAge', { moreThan: '', lessThan: '' });
+                        setShowCaseAgeDropdown(false);
+                      }}
+                    >
+                      Clear
+                    </button>
+                    <button 
+                      className="px-3 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700 rounded"
+                      onClick={() => setShowCaseAgeDropdown(false)}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>}
+            </div>
+          )}
+
           {/* Applied filters */}
           {filters.status && <div className="flex items-center bg-gray-100 rounded px-3 py-1.5 text-sm">
               Status: {filters.status}
@@ -136,9 +295,15 @@ const CaseManagement = ({
                 ×
               </button>
             </div>}
-          {filters.caseAge && <div className="flex items-center bg-gray-100 rounded px-3 py-1.5 text-sm">
-              Case Age: {filters.caseAge}
-              <button className="ml-2 text-gray-500" onClick={() => handleFilterChange('caseAge', '')}>
+          {(filters.caseAge.moreThan !== '' || filters.caseAge.lessThan !== '') && <div className="flex items-center bg-gray-100 rounded px-3 py-1.5 text-sm">
+              Case Age: 
+              {filters.caseAge.moreThan !== '' && filters.caseAge.lessThan !== '' 
+                ? `${filters.caseAge.moreThan}-${filters.caseAge.lessThan} days`
+                : filters.caseAge.moreThan !== '' 
+                  ? `>${filters.caseAge.moreThan} days`
+                  : `<${filters.caseAge.lessThan} days`
+              }
+              <button className="ml-2 text-gray-500" onClick={() => handleFilterChange('caseAge', { moreThan: '', lessThan: '' })}>
                 ×
               </button>
             </div>}

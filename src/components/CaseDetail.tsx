@@ -1,13 +1,46 @@
-import React, { useState } from 'react';
-import { ArrowLeftIcon, CalendarIcon, LockIcon } from 'lucide-react';
-const CaseDetail = ({
+import React, { useState, useEffect } from 'react';
+import { CalendarIcon, LockIcon } from 'lucide-react';
+import Breadcrumb from './Breadcrumb';
+import { CaseItem, Transaction } from '../types';
+
+interface CaseDetailProps {
+  caseData: CaseItem;
+  onBack: () => void;
+}
+
+const CaseDetail: React.FC<CaseDetailProps> = ({
   caseData,
   onBack
 }) => {
   const [dateRange, setDateRange] = useState('30');
-  const [transactions, setTransactions] = useState(caseData.transactions || []);
+  const [transactions, setTransactions] = useState<Transaction[]>(caseData.transactions || []);
+
+  const breadcrumbItems = [
+    { label: 'Alloy' },
+    { label: 'Cases', onClick: onBack },
+    { label: caseData.entity, isActive: true }
+  ];
+
+  // Function to filter transactions based on date range
+  const filterTransactionsByDate = (transactions: Transaction[], days: number) => {
+    const today = new Date('2025-07-26'); // Current date
+    const cutoffDate = new Date(today);
+    cutoffDate.setDate(today.getDate() - days);
+    
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      return transactionDate >= cutoffDate && transactionDate <= today;
+    });
+  };
+
+  // Update transactions when date range changes
+  useEffect(() => {
+    const filteredTransactions = filterTransactionsByDate(caseData.transactions || [], parseInt(dateRange));
+    setTransactions(filteredTransactions);
+  }, [dateRange, caseData.transactions]);
+
   // Function to format date for display
-  const formatDate = dateString => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -16,17 +49,15 @@ const CaseDetail = ({
     });
   };
   return <div className="p-6 w-full bg-gray-50">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb items={breadcrumbItems} />
+      
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center">
-          <button onClick={onBack} className="mr-4 p-1 rounded-full hover:bg-gray-200">
-            <ArrowLeftIcon size={20} />
-          </button>
-          <h1 className="text-2xl font-bold">{caseData.entity}</h1>
-        </div>
+        <h1 className="text-2xl font-bold">{caseData.entity}</h1>
         <div className="flex space-x-2">
           <button className="p-2 rounded-full hover:bg-gray-200">
-            <div size={20} />
+            {/* Icon placeholder */}
           </button>
           <button className="p-2 rounded-full hover:bg-gray-200">
             <LockIcon size={20} />
@@ -64,13 +95,16 @@ const CaseDetail = ({
             <div className="mt-4">
               <div className="text-sm text-gray-500">TRANSACTIONS</div>
               <div className="text-xl font-bold">
-                {caseData.transactionCount}
+                {transactions.length} / {caseData.transactionCount}
+              </div>
+              <div className="text-xs text-gray-500">
+                (Filtered / Total)
               </div>
             </div>
           </div>
           <div className="border rounded-md p-4">
             <h3 className="font-semibold mb-2">Alerts Triggered</h3>
-            {caseData.alertsTriggered.map((alert, index) => <div key={index} className="mb-3">
+            {caseData.alertsTriggered.map((alert: any, index: number) => <div key={index} className="mb-3">
                 <div className="flex items-center">
                   <div className={`h-4 w-4 rounded-sm mr-2 ${alert.level === 'high' ? 'bg-red-600' : alert.level === 'medium' ? 'bg-orange-500' : 'bg-yellow-400'}`}></div>
                   <div className="font-medium">{alert.title}</div>
@@ -117,7 +151,7 @@ const CaseDetail = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {transactions.map((transaction, index) => <tr key={index}>
+            {transactions.map((transaction: Transaction, index: number) => <tr key={index}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {formatDate(transaction.date)}
                 </td>
@@ -134,8 +168,8 @@ const CaseDetail = ({
           </tbody>
         </table>
         <div className="mt-4 text-center text-sm text-gray-500">
-          Showing {transactions.length} transactions from the last {dateRange}{' '}
-          days
+          Showing {transactions.length} transactions from the last {dateRange} days
+          {transactions.length !== caseData.transactionCount && ` (${caseData.transactionCount} total)`}
         </div>
       </div>
     </div>;
