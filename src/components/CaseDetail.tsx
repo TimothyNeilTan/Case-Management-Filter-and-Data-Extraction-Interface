@@ -93,7 +93,7 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
               </div>
             </div>
             <div className="mt-4">
-              <div className="text-sm text-gray-500">TRANSACTIONS</div>
+              <div className="text-sm text-gray-500">RECENT TRANSACTIONS</div>
               <div className="text-xl font-bold">
                 {transactions.length} / {caseData.transactionCount}
               </div>
@@ -116,10 +116,10 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
           </div>
         </div>
       </div>
-      {/* Transactions section */}
+      {/* Recent Transactions section */}
       <div className="bg-white p-4 rounded-md shadow">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Transactions</h2>
+          <h2 className="text-lg font-semibold">Recent Transactions</h2>
           <div className="flex items-center">
             <span className="text-sm text-gray-500 mr-2">Date Range</span>
             <div className="relative">
